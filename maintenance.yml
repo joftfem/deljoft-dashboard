@@ -1,0 +1,39 @@
+name: Repo Maintenance
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 4 * * 1' # weekly Monday 4 AM UTC
+  workflow_dispatch: # manual trigger
+
+jobs:
+  maintenance:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Setup environment
+      run: sudo apt-get update && sudo apt-get install -y zip python3-pip
+
+    - name: Install truffleHog
+      run: pip3 install truffleHog
+
+    - name: Run scan and backup script
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      run: |
+        chmod +x scan_repos.sh cleanup_old_repo.sh
+        ./scan_repos.sh
+
+    - name: Cleanup old backups
+      run: ./cleanup_old_repo.sh
+
+    - name: Upload backup artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: repo-backups
+        path: repo-archives/*.zip
